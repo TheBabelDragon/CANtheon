@@ -20,6 +20,7 @@ def test_duplicate_2_to_2():
     t = SequenceTracker()
     t.observe(2)
     assert t.observe(2) == SequenceAnomaly.DUPLICATE
+    # last_sequence stays 2
     assert t.last_sequence == 2
 
 
@@ -33,7 +34,7 @@ def test_rollback_5_to_0():
 def test_wraparound_8bit():
     t = SequenceTracker(sequence_width=8)
     t.observe(255)
-    assert t.observe(0) == SequenceAnomaly.NONE
+    assert t.observe(0) == SequenceAnomaly.NONE  # wrap is expected next
 
 
 def test_sequence_in_runtime():
@@ -75,7 +76,9 @@ def test_sequence_in_runtime():
 
     rt.process(frame(0), ingest_timestamp_ns=1)
     rt.process(frame(1), ingest_timestamp_ns=2)
+    # gap
     rt.process(frame(3), ingest_timestamp_ns=3)
     types = [d.diagnostic_type for d in rt.diagnostics]
     assert DiagnosticType.SEQUENCE_GAP in types
+    # observation still present
     assert len(rt.sink.observations) >= 3

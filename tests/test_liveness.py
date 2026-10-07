@@ -23,7 +23,7 @@ def test_alive_stale_timeout():
                 "bit_length": 16,
                 "is_signed": True,
                 "scale": 0.1,
-                "unit": "\u00b0C",
+                "unit": "°C",
                 "min_value": -40,
                 "max_value": 125,
             }],
@@ -39,12 +39,15 @@ def test_alive_stale_timeout():
     data = bytes([250 & 0xFF, 0])
     frame = CanFrame(can_id=0x100, data=data)
 
+    # node appears → ALIVE
     rt.process(frame, ingest_timestamp_ns=0)
     assert rt.check_liveness(0) == LivenessState.ALIVE
 
+    # no heartbeat → STALE
     clock.set(600)
     assert rt.check_liveness(600) == LivenessState.STALE
 
+    # timeout → TIMEOUT + diagnostic
     clock.set(1500)
     assert rt.check_liveness(1500) == LivenessState.TIMEOUT
     assert any(d.diagnostic_type == DiagnosticType.NODE_TIMEOUT for d in rt.diagnostics)
