@@ -1,6 +1,6 @@
 # CANtheon schemas
 
-Versioned message/signal definitions for physical nodes.
+Versioned message/signal definitions for physical nodes. Schemas may constrain transport (Classical CAN vs CAN-FD, ID format, max payload).
 
 ## Document shape
 
@@ -13,13 +13,14 @@ Versioned message/signal definitions for physical nodes.
   "capabilities": ["temperature"],
   "messages": [
     {
-      "message_id": 256,
+      "message_id": 0x100,
       "name": "TemperatureStatus",
       "dlc": 2,
+      "frame_format": "CLASSICAL_CAN",
+      "identifier_format": "STANDARD",
+      "max_payload": 8,
       "schema_id": "temp_sensor.v1",
       "schema_version": "1.0",
-      "frame_format": "EITHER",
-      "identifier_format": "EITHER",
       "is_heartbeat": false,
       "sequence_width": null,
       "signals": [
@@ -31,7 +32,7 @@ Versioned message/signal definitions for physical nodes.
           "is_signed": true,
           "scale": 0.1,
           "offset": 0.0,
-          "unit": "\u00b0C",
+          "unit": "°C",
           "endianness": "little",
           "min_value": -40.0,
           "max_value": 125.0,
@@ -43,10 +44,17 @@ Versioned message/signal definitions for physical nodes.
 }
 ```
 
-`frame_format`: `CLASSICAL_CAN` | `CAN_FD` | `EITHER`  
-`identifier_format`: `STANDARD_11` | `EXTENDED_29` | `EITHER`
-
 Load with `SchemaRegistry.load_json(path)` or `load_schema(path)`.
+
+## Transport constraints (optional per message)
+
+| Field | Values | Default |
+|-------|--------|---------|
+| `frame_format` | `CLASSICAL_CAN`, `CAN_FD` | `CLASSICAL_CAN` |
+| `identifier_format` | `STANDARD` (11-bit), `EXTENDED` (29-bit) | `STANDARD` |
+| `max_payload` | 0–8 (classical) or up to 64 (FD) | 8 |
+
+Runtime emits `SCHEMA_TRANSPORT_MISMATCH` when an ingested frame violates the message’s declared transport constraints. Signal extraction supports start bits beyond the classical 8-byte window when the frame is CAN-FD.
 
 ## Compatibility rules
 
@@ -62,11 +70,11 @@ These propagate into every `Observation`, `Provenance`, and `MetaFieldEvent`.
 | missing / `"unknown"` identity | **unknown** |
 
 A schema change must **never** silently reinterpret an existing CAN payload.
-A Classical-CAN-only schema must not silently accept an FD frame (emits `SCHEMA_TRANSPORT_MISMATCH`).
+Use `check_compatibility(expected, actual)` or `registry.check_schema(actual)`.
 
 ## Optional fields
 
 - `is_heartbeat`: mark a message as a liveness source
-- `sequence_width`: bit width of sequence field
+- `sequence_width`: bit width of sequence field (enables gap/duplicate/rollback detection)
 - `is_sequence` on a signal: extract sequence from payload
-- `frame_format` / `identifier_format` / `max_payload`: transport constraints
+- `frame_format` / `identifier_format` / `max_payload`: transport contract (see above)
