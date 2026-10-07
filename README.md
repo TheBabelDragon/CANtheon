@@ -1,173 +1,141 @@
 # CANtheon
 
-**CANtheon converts distributed CAN 2.0 traffic into canonical, validated, provenance-preserving physical state for the MetaField ecosystem.**
+**CANtheon converts distributed Classical CAN and CAN-FD traffic into canonical, validated, provenance-preserving physical state for the MetaField ecosystem.**
+
+CANtheon owns trustworthy physical-state translation. It does **not** own field semantics, tensor semantics, inference, or autonomous control.
+
+CANtheon supports **Classical CAN and CAN-FD** at the transport boundary, with CAN-FD up to 64-byte payloads. The canonical observation model is transport-independent.
+
+## Architecture
+
+```
+Physical Nodes
+      │
+      ▼
+ Classical CAN / CAN-FD
+      │
+      ▼
+   CANtheon
+      │
+      ├── Frame decoding
+      ├── FD transport handling
+      ├── Normalization
+      ├── Validation
+      ├── Provenance
+      ├── Clock
+      ├── Sequence
+      ├── Diagnostics
+      ├── Discovery
+      └── Replay
+      │
+      ▼
+    CANgate
+      │
+      ▼
+   MetaField
+      │
+      ▼
+  TensorGate
+```
 
 ## Boundary
 
-| Layer        | Role                                              |
-|--------------|---------------------------------------------------|
-| **CANtheon** | physical state boundary (this repository)         |
-| **CANgate**  | MetaField gateway (inside this repository)        |
-| **MetaField**| field semantics (external)                        |
-| **TensorGate**| numerical/tensor boundary (external)             |
+| Layer | Role |
+|-------|------|
+| **CANtheon** | physical state boundary (this repository) |
+| **CANgate** | MetaField gateway (inside this repository) |
+| **MetaField Adapter** | protocol interface (`adapters.metafield`) |
+| **MetaField** | field semantics (external) |
+| **TensorGate** | numerical/tensor boundary (external) |
 
-CANtheon is **not** an ML framework and **not** a replacement for MetaField or TensorGate.
+## Transport
 
-```
-Physical modules
-      │
-      ▼
-   CAN 2.0
-      │
-      ▼
-┌─────────────────────┐
-│      CANtheon       │
-│  decode · normalize │
-│  validate · stamp   │
-│  sequence · quality │
-│  identity · prove   │
-└─────────┬───────────┘
-          │
-          ▼
-      CANgate
-          │
-          ▼
-       MetaField
-          │
-          ▼
-      TensorGate
+| Format | ID | Payload |
+|--------|-----|---------|
+| Classical CAN | 11-bit or 29-bit | 0–8 bytes |
+| CAN-FD | 11-bit or 29-bit | 0,1,2,3,4,5,6,7,8,12,16,20,24,32,48,64 bytes |
+
+FD flags (BRS, ESI) live at the frame layer only. Observations remain transport-independent.
+
+```python
+from cantheon import CanFrame, FrameFormat
+
+# Classical (default, backward compatible)
+f = CanFrame.classical(0x100, b"\xFA\x00")
+
+# CAN-FD 64-byte with BRS
+f = CanFrame.can_fd(0x200, bytes(64), brs=True, extended=True)
 ```
 
 ## What CANtheon owns
 
-- CAN frame ingestion
-- Message decoding & signal extraction
-- Engineering-unit conversion (scale / offset)
-- Node / module identity
-- Units, timestamps, sequence numbers
-- Quality / state flags (`VALID`, `INVALID`, `STALE`, `OUT_OF_RANGE`, `DECODE_ERROR`)
-- Validation (range, decode errors — never silent discard)
-- Deterministic canonical observations
-- Provenance
-- Runtime event routing
-- CAN-side diagnostics
-- CANgate (MetaField-facing adapter surface)
+- Classical CAN and CAN-FD frame ingestion
+- Signal extraction (scale / offset / endian / signed) across full FD payload
+- Node identity, capability discovery, transport capability reporting
+- Dual timestamps (source vs ingest)
+- Sequence tracking, quality flags, diagnostics
+- Node liveness, deterministic record/replay
+- Schema identity and transport-aware schema contracts
+- CANgate lifecycle and health
 
 ## What CANtheon does **not** own
 
-- MetaField field semantics
-- TensorGate numerical / tensor semantics
-- Machine-learning inference or model weights
-- Physical waveform processing
-- ESP-NOW or unrelated swarm transport
-- Application-specific actuator logic / autonomous control authority
+- MetaField / TensorGate semantics
+- Machine-learning inference
+- Autonomous control authority
+- Physical CAN-FD hardware drivers
+
+## Time Semantics
+
+| Field | Meaning |
+|-------|---------|
+| `source_timestamp_ns` | when the originating node says the measurement occurred (`None` if unavailable) |
+| `ingest_timestamp_ns` | when CANtheon accepted the frame |
+| `sequence` | source/message ordering identifier |
+
+## Deterministic Replay
+
+Recorded streams (including full CAN-FD transport metadata) replay without hardware:
+
+```
+live frames → Recorder → JSONL → Replay.run(runtime)
+→ identical canonical observations + diagnostics
+```
 
 ## Install
 
 ```bash
-# from a clean checkout
 python -m pip install -e ".[dev]"
+python -m pytest -q
 ```
 
-Zero runtime dependencies. Tests need `pytest`.
-
-## Canonical observation
-
-Every observation carries:
-
-| Field         | Meaning                                      |
-|---------------|----------------------------------------------|
-| `node_id`     | physical participant identity                |
-| `message_id`  | CAN 11-bit ID                                |
-| `signal_id`   | signal within the message                    |
-| `value`       | engineering value                            |
-| `unit`        | unit string (e.g. `°C`)                      |
-| `timestamp_ns`| nanosecond timestamp                         |
-| `sequence`    | monotonic sequence per runtime               |
-| `quality`     | `VALID` / `OUT_OF_RANGE` / `DECODE_ERROR` … |
-| `source`      | origin tag (`cantheon`)                      |
-| `provenance`  | node, CAN ID, signal, sequence, schema, raw  |
-
-Raw frames, decoded signals, and normalized observations remain **distinct**. No silent conversion.
-
-## End-to-end example
-
-```bash
-python examples/live_loop.py
-```
-
-Path demonstrated:
-
-```
-simulated CAN frame
-        ↓
-CANtheon decoder
-        ↓
-normalized observation (°C)
-        ↓
-validation (incl. OUT_OF_RANGE preserved)
-        ↓
-provenance
-        ↓
-CANgate
-        ↓
-MetaField-compatible event boundary
-```
-
-Conceptual reverse (interface only — no autonomy):
-
-```
-canonical decision/output
-        ↓
-CANgate.encode_command(...)
-        ↓
-CAN message bytes
-```
-
-## Minimal host usage
+## Quick start
 
 ```python
 from cantheon import (
-    CanFrame, Node, SchemaRegistry, Runtime, InMemorySink, CANgate
+    CanFrame, Node, SchemaRegistry, Runtime, InMemorySink,
+    CANgate, FixedClock, Recorder,
 )
 
 registry = SchemaRegistry()
 registry.load_json("schemas/example_node.json")
 
-node = Node(node_id="temp_sensor_01", name="Temperature Sensor")
-runtime = Runtime(registry, node, sink=InMemorySink())
+clock = FixedClock(0)
+runtime = Runtime(registry, Node("temp_sensor_01", "Temp"),
+                  sink=InMemorySink(), clock=clock)
 gate = CANgate(runtime)
 
-# 25.0 °C as signed 16-bit tenths, little-endian
-frame = CanFrame.from_id_and_bytes(0x100, bytes([0xFA, 0x00]))
-observations = gate.ingest(frame)
+# Classical
+frame = CanFrame.classical(0x100, bytes([0xFA, 0x00]))
+gate.ingest(frame, ingest_timestamp_ns=1000)
 
-for obs in observations:
-    print(obs.value, obs.unit, obs.quality.value)
-    print(obs.provenance.to_dict())
-
-print(gate.health())
-# events ready for MetaField adapter:
-for event in gate.published:
-    print(event.to_dict())
+# CAN-FD
+fd = CanFrame.can_fd(0x200, bytes(32), brs=True)
 ```
 
-## Tests
+## Remaining integration boundary
 
-```bash
-python -m pytest -q
-```
-
-Coverage includes: frame construction, ID handling, payload decode, signed/unsigned extraction, scale/offset, endianness, units, range validation, invalid input, node identity, timestamps, sequence, provenance, observation serialization, CANgate ingest/emit, deterministic reprocessing.
-
-## Schema versioning
-
-Message/signal definitions live under `schemas/` and are versioned via `schema_version`. Load with `SchemaRegistry.load_json(...)`.
-
-## Remaining integration boundaries
-
-- **MetaField**: attach a real MetaField consumer to `CANgate.on_publish` or map `MetaFieldEvent` into the field substrate. CANtheon does not import or embed MetaField.
-- **TensorGate**: once MetaField admits the observation as field state, TensorGate can consume the numerical boundary. CANtheon does not implement tensor semantics.
+Implement `MetaFieldAdapter` outside this repo; wire to `CANgate.on_publish`. No MetaField/TensorGate code in CANtheon.
 
 ## License
 
