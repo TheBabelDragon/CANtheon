@@ -1,11 +1,15 @@
 {
+  "schema_id": "temp_sensor.v1",
   "schema_version": "1.0",
   "node_id": "temp_sensor_01",
+  "node_name": "Temperature Sensor Module",
+  "capabilities": ["temperature", "health"],
   "messages": [
     {
       "message_id": 256,
       "name": "TemperatureStatus",
       "dlc": 2,
+      "schema_id": "temp_sensor.v1",
       "schema_version": "1.0",
       "description": "Board temperature reported by the physical sensor node",
       "signals": [
@@ -29,7 +33,9 @@
       "message_id": 257,
       "name": "StatusFlags",
       "dlc": 1,
+      "schema_id": "temp_sensor.v1",
       "schema_version": "1.0",
+      "is_heartbeat": true,
       "signals": [
         {
           "signal_id": "health_code",

@@ -45,8 +45,9 @@ def main():
                  clock=clock, recorder=recorder)
     gate = CANgate(rt)
 
+    # 32-byte CAN-FD frame, pressure=250.0 kPa at byte 20
     data = bytearray(32)
-    raw = 2500
+    raw = 2500  # tenths
     data[20] = raw & 0xFF
     data[21] = (raw >> 8) & 0xFF
     frame = CanFrame.can_fd(0x400, bytes(data), brs=True)
@@ -60,6 +61,7 @@ def main():
           f"quality={obs.quality.value}")
     assert abs(obs.value - 250.0) < 1e-9
 
+    # Replay
     replayed = Replay.from_recorder(recorder).run(
         Runtime(reg, Node("fd_node", "FD Node"), sink=InMemorySink(),
                 clock=FixedClock(0))
@@ -67,6 +69,7 @@ def main():
     assert replayed[0].canonical_key() == obs.canonical_key()
     print("replay: canonical state matches")
 
+    # Failure: Classical-only schema rejects FD
     reg2 = SchemaRegistry()
     reg2.load_dict({
         "schema_id": "classic_only",
