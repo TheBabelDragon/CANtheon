@@ -1,11 +1,9 @@
 """Canonical observation and quality flags.
 
-Distinguishes:
-  - raw CAN frame (CanFrame / RawFrameRecord)
-  - decoded signal values
-  - normalized Observation
-
-No silent conversion between layers.
+Time semantics:
+  source_timestamp_ns: when the originating node says the measurement occurred
+  ingest_timestamp_ns: when CANtheon accepted the frame
+  sequence: source/message ordering identifier
 """
 
 from __future__ import annotations
@@ -15,6 +13,7 @@ from enum import Enum
 from typing import Any, Optional
 
 from .provenance import Provenance
+from .schema_compat import SchemaIdentity
 
 
 class Quality(str, Enum):
@@ -27,8 +26,6 @@ class Quality(str, Enum):
 
 @dataclass(frozen=True)
 class RawFrameRecord:
-    """Immutable record of a received CAN frame before decoding."""
-
     can_id: int
     data_hex: str
     dlc: int
@@ -38,28 +35,37 @@ class RawFrameRecord:
 
 @dataclass(frozen=True)
 class Observation:
-    """Canonical physical-state observation.
-
-    Required fields per the CANtheon contract:
-      node_id, message_id, signal_id, value, unit,
-      timestamp, sequence, quality, source, provenance
-    """
-
     node_id: str
     message_id: int
     signal_id: str
     value: float
     unit: str
-    timestamp_ns: int
     sequence: int
     quality: Quality
     source: str
     provenance: Provenance
-    raw_value: Optional[int] = None  # integer before scale/offset
+    ingest_timestamp_ns: int = 0
+    source_timestamp_ns: Optional[int] = None
+    timestamp_ns: int = 0
+    raw_value: Optional[int] = None
     message_name: str = ""
     signal_name: str = ""
     schema_version: str = "1.0"
+    schema_id: str = ""
     extra: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if self.timestamp_ns and not self.ingest_timestamp_ns:
+            object.__setattr__(self, "ingest_timestamp_ns", self.timestamp_ns)
+        if self.ingest_timestamp_ns and not self.timestamp_ns:
+            object.__setattr__(self, "timestamp_ns", self.ingest_timestamp_ns)
+
+    @property
+    def schema_identity(self) -> SchemaIdentity:
+        return SchemaIdentity(
+            schema_id=self.schema_id or "unknown",
+            schema_version=self.schema_version,
+        )
 
     def to_dict(self) -> dict:
         return {
@@ -70,6 +76,8 @@ class Observation:
             "value": self.value,
             "unit": self.unit,
             "timestamp_ns": self.timestamp_ns,
+            "ingest_timestamp_ns": self.ingest_timestamp_ns,
+            "source_timestamp_ns": self.source_timestamp_ns,
             "sequence": self.sequence,
             "quality": self.quality.value,
             "source": self.source,
@@ -78,8 +86,16 @@ class Observation:
             "message_name": self.message_name,
             "signal_name": self.signal_name,
             "schema_version": self.schema_version,
+            "schema_id": self.schema_id,
             "extra": dict(self.extra),
         }
 
     def is_valid(self) -> bool:
         return self.quality == Quality.VALID
+
+    def canonical_key(self) -> str:
+        return (
+            f"{self.node_id}|0x{self.message_id:03X}|{self.signal_id}|"
+            f"{self.sequence}|{self.value}|{self.quality.value}|"
+            f"{self.schema_id}@{self.schema_version}"
+        )
