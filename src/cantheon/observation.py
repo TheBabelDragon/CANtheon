@@ -1,1 +1,85 @@
-"""Canonical observation and quality flags.\n\nDistinguishes:\n  - raw CAN frame (CanFrame / RawFrameRecord)\n  - decoded signal values\n  - normalized Observation\n\nNo silent conversion between layers.\n"""\n\nfrom __future__ import annotations\n\nfrom dataclasses import dataclass, field\nfrom enum import Enum\nfrom typing import Any, Optional\n\nfrom .provenance import Provenance\n\n\nclass Quality(str, Enum):\n    VALID = \"VALID\"\n    INVALID = \"INVALID\"\n    STALE = \"STALE\"\n    OUT_OF_RANGE = \"OUT_OF_RANGE\"\n    DECODE_ERROR = \"DECODE_ERROR\"\n\n\n@dataclass(frozen=True)\nclass RawFrameRecord:\n    \"\"\"Immutable record of a received CAN frame before decoding.\"\"\"\n\n    can_id: int\n    data_hex: str\n    dlc: int\n    receive_timestamp_ns: Optional[int]\n    source: str = \"can\"\n\n\n@dataclass(frozen=True)\nclass Observation:\n    \"\"\"Canonical physical-state observation.\n\n    Required fields per the CANtheon contract:\n      node_id, message_id, signal_id, value, unit,\n      timestamp, sequence, quality, source, provenance\n    \"\"\"\n\n    node_id: str\n    message_id: int\n    signal_id: str\n    value: float\n    unit: str\n    timestamp_ns: int\n    sequence: int\n    quality: Quality\n    source: str\n    provenance: Provenance\n    raw_value: Optional[int] = None  # integer before scale/offset\n    message_name: str = \"\"\n    signal_name: str = \"\"\n    schema_version: str = \"1.0\"\n    extra: dict[str, Any] = field(default_factory=dict)\n\n    def to_dict(self) -> dict:\n        return {\n            \"node_id\": self.node_id,\n            \"message_id\": self.message_id,\n            \"message_id_hex\": f\"0x{self.message_id:03X}\",\n            \"signal_id\": self.signal_id,\n            \"value\": self.value,\n            \"unit\": self.unit,\n            \"timestamp_ns\": self.timestamp_ns,\n            \"sequence\": self.sequence,\n            \"quality\": self.quality.value,\n            \"source\": self.source,\n            \"provenance\": self.provenance.to_dict(),\n            \"raw_value\": self.raw_value,\n            \"message_name\": self.message_name,\n            \"signal_name\": self.signal_name,\n            \"schema_version\": self.schema_version,\n            \"extra\": dict(self.extra),\n        }\n\n    def is_valid(self) -> bool:\n        return self.quality == Quality.VALID\n
+"""Canonical observation and quality flags.
+
+Distinguishes:
+  - raw CAN frame (CanFrame / RawFrameRecord)
+  - decoded signal values
+  - normalized Observation
+
+No silent conversion between layers.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any, Optional
+
+from .provenance import Provenance
+
+
+class Quality(str, Enum):
+    VALID = "VALID"
+    INVALID = "INVALID"
+    STALE = "STALE"
+    OUT_OF_RANGE = "OUT_OF_RANGE"
+    DECODE_ERROR = "DECODE_ERROR"
+
+
+@dataclass(frozen=True)
+class RawFrameRecord:
+    """Immutable record of a received CAN frame before decoding."""
+
+    can_id: int
+    data_hex: str
+    dlc: int
+    receive_timestamp_ns: Optional[int]
+    source: str = "can"
+
+
+@dataclass(frozen=True)
+class Observation:
+    """Canonical physical-state observation.
+
+    Required fields per the CANtheon contract:
+      node_id, message_id, signal_id, value, unit,
+      timestamp, sequence, quality, source, provenance
+    """
+
+    node_id: str
+    message_id: int
+    signal_id: str
+    value: float
+    unit: str
+    timestamp_ns: int
+    sequence: int
+    quality: Quality
+    source: str
+    provenance: Provenance
+    raw_value: Optional[int] = None  # integer before scale/offset
+    message_name: str = ""
+    signal_name: str = ""
+    schema_version: str = "1.0"
+    extra: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict:
+        return {
+            "node_id": self.node_id,
+            "message_id": self.message_id,
+            "message_id_hex": f"0x{self.message_id:03X}",
+            "signal_id": self.signal_id,
+            "value": self.value,
+            "unit": self.unit,
+            "timestamp_ns": self.timestamp_ns,
+            "sequence": self.sequence,
+            "quality": self.quality.value,
+            "source": self.source,
+            "provenance": self.provenance.to_dict(),
+            "raw_value": self.raw_value,
+            "message_name": self.message_name,
+            "signal_name": self.signal_name,
+            "schema_version": self.schema_version,
+            "extra": dict(self.extra),
+        }
+
+    def is_valid(self) -> bool:
+        return self.quality == Quality.VALID
