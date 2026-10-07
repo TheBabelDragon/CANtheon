@@ -57,7 +57,8 @@ class NodeCapability:
     messages: tuple[MessageCapability, ...] = ()
     capabilities: tuple[str, ...] = ()
     last_seen_ns: Optional[int] = None
-    health: str = "UNKNOWN"
+    health: str = "UNKNOWN"  # UNKNOWN | OK | DEGRADED | OFFLINE | ALIVE | STALE | TIMEOUT
+    # Transport capabilities (declared, not auto-invented)
     supported_frame_formats: tuple[str, ...] = ("CLASSICAL_CAN", "CAN_FD")
     supported_identifier_formats: tuple[str, ...] = ("STANDARD_11", "EXTENDED_29")
     max_payload_size: int = 64
