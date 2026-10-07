@@ -11,44 +11,33 @@ from typing import Optional
 
 
 class Compatibility(str, Enum):
-    COMPATIBLE = "compatible"
-    INCOMPATIBLE = "incompatible"
-    UNKNOWN = "unknown"
+    COMPATIBLE = "COMPATIBLE"
+    INCOMPATIBLE = "INCOMPATIBLE"
+    UNKNOWN = "UNKNOWN"
 
 
 @dataclass(frozen=True)
 class SchemaIdentity:
-    """Explicit schema identity attached to every definition and observation."""
-
     schema_id: str
     schema_version: str
-
-    def to_dict(self) -> dict:
-        return {
-            "schema_id": self.schema_id,
-            "schema_version": self.schema_version,
-        }
-
-    @classmethod
-    def from_dict(cls, d: dict) -> "SchemaIdentity":
-        return cls(
-            schema_id=str(d.get("schema_id", "unknown")),
-            schema_version=str(d.get("schema_version", "0.0")),
-        )
 
     def __str__(self) -> str:
         return f"{self.schema_id}@{self.schema_version}"
 
-
-def _parse_version(v: str) -> tuple[int, ...]:
-    """Parse dotted version into integer tuple. Non-numeric parts → 0."""
-    parts = []
-    for p in v.split("."):
+    @property
+    def major(self) -> int:
         try:
-            parts.append(int(p))
+            return int(self.schema_version.split(".")[0])
+        except (ValueError, IndexError):
+            return -1
+
+    @property
+    def minor(self) -> int:
+        parts = self.schema_version.split(".")
+        try:
+            return int(parts[1]) if len(parts) > 1 else 0
         except ValueError:
-            parts.append(0)
-    return tuple(parts) if parts else (0,)
+            return 0
 
 
 def check_compatibility(
@@ -57,17 +46,19 @@ def check_compatibility(
 ) -> Compatibility:
     """Deterministic compatibility check.
 
-    Rules (documented in schemas/README.md):
-    - same schema_id + same version → compatible
-    - same schema_id + different version:
-        major equal and actual minor/patch >= expected → compatible
-        major different → incompatible
-    - different schema_id → incompatible
-    - missing/unknown identity → unknown
+    Rules:
+    - missing / "unknown" identity → UNKNOWN
+    - different schema_id → INCOMPATIBLE
+    - same schema_id + same version → COMPATIBLE
+    - same schema_id + same major, actual ≥ expected → COMPATIBLE
+    - same schema_id + different major → INCOMPATIBLE
     """
-    if not expected.schema_id or expected.schema_id == "unknown":
-        return Compatibility.UNKNOWN
-    if not actual.schema_id or actual.schema_id == "unknown":
+    if (
+        not expected.schema_id
+        or not actual.schema_id
+        or expected.schema_id == "unknown"
+        or actual.schema_id == "unknown"
+    ):
         return Compatibility.UNKNOWN
 
     if expected.schema_id != actual.schema_id:
@@ -76,17 +67,25 @@ def check_compatibility(
     if expected.schema_version == actual.schema_version:
         return Compatibility.COMPATIBLE
 
-    exp = _parse_version(expected.schema_version)
-    act = _parse_version(actual.schema_version)
+    exp_major = expected.major
+    act_major = actual.major
+    if exp_major < 0 or act_major < 0:
+        return Compatibility.UNKNOWN
 
-    n = max(len(exp), len(act))
-    exp = exp + (0,) * (n - len(exp))
-    act = act + (0,) * (n - len(act))
-
-    if exp[0] != act[0]:
+    if exp_major != act_major:
         return Compatibility.INCOMPATIBLE
 
-    if act >= exp:
-        return Compatibility.COMPATIBLE
-
-    return Compatibility.INCOMPATIBLE
+    # same major: actual must be >= expected (minor.micro as float-ish)
+    try:
+        exp_parts = [int(x) for x in expected.schema_version.split(".")]
+        act_parts = [int(x) for x in actual.schema_version.split(".")]
+        # pad
+        while len(exp_parts) < 3:
+            exp_parts.append(0)
+        while len(act_parts) < 3:
+            act_parts.append(0)
+        if tuple(act_parts) >= tuple(exp_parts):
+            return Compatibility.COMPATIBLE
+        return Compatibility.INCOMPATIBLE
+    except ValueError:
+        return Compatibility.UNKNOWN

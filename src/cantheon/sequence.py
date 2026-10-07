@@ -1,7 +1,6 @@
 """Sequence tracking for messages that declare sequence information.
 
 Detects: expected next, actual, gap, duplicate, rollback/reset.
-Does NOT discard frames — observation survives; diagnostic records anomaly.
 """
 
 from __future__ import annotations
@@ -19,58 +18,75 @@ class SequenceAnomaly(str, Enum):
 
 
 @dataclass
+class SequenceResult:
+    previous: Optional[int]
+    current: int
+    expected: Optional[int]
+    anomaly: SequenceAnomaly
+
+
 class SequenceTracker:
-    """Per-(node, message) sequence tracker.
+    """Tracks sequence numbers for a single (node, message) stream."""
 
-    sequence_width: bit width of the sequence field (e.g. 8 → wrap at 256).
-    None means unbounded monotonic integer.
-    """
-
-    sequence_width: Optional[int] = None
-    last_sequence: Optional[int] = None
+    def __init__(self, sequence_width: Optional[int] = None) -> None:
+        self.sequence_width = sequence_width
+        self._last: Optional[int] = None
+        self._count = 0
 
     @property
-    def modulus(self) -> Optional[int]:
+    def last(self) -> Optional[int]:
+        return self._last
+
+    @property
+    def count(self) -> int:
+        return self._count
+
+    def _wrap_mask(self) -> Optional[int]:
         if self.sequence_width is None:
             return None
-        return 1 << self.sequence_width
-
-    def expected_next(self) -> Optional[int]:
-        if self.last_sequence is None:
-            return None
-        nxt = self.last_sequence + 1
-        if self.modulus is not None:
-            nxt = nxt % self.modulus
-        return nxt
+        return (1 << self.sequence_width) - 1
 
     def observe(self, sequence: int) -> SequenceAnomaly:
-        """Observe a sequence value. Returns anomaly type; always updates state."""
-        if self.last_sequence is None:
-            self.last_sequence = sequence
+        """Observe a new sequence value; return anomaly kind."""
+        self._count += 1
+        if self._last is None:
+            self._last = sequence
             return SequenceAnomaly.NONE
 
-        expected = self.expected_next()
-        assert expected is not None
+        prev = self._last
+        mask = self._wrap_mask()
+        expected = prev + 1
+        if mask is not None:
+            expected = expected & mask
 
-        if sequence == self.last_sequence:
-            return SequenceAnomaly.DUPLICATE
+        if sequence == prev:
+            anomaly = SequenceAnomaly.DUPLICATE
+        elif sequence == expected:
+            anomaly = SequenceAnomaly.NONE
+        elif mask is not None and sequence < prev and (prev - sequence) > (mask // 2):
+            # likely wrap-around that we already handled via expected
+            # if not equal expected, treat as rollback
+            anomaly = SequenceAnomaly.ROLLBACK
+        elif sequence < prev:
+            anomaly = SequenceAnomaly.ROLLBACK
+        else:
+            anomaly = SequenceAnomaly.GAP
 
-        if sequence == expected:
-            self.last_sequence = sequence
-            return SequenceAnomaly.NONE
+        self._last = sequence
+        return anomaly
 
-        if self.modulus is not None:
-            forward = (sequence - self.last_sequence) % self.modulus
-            if forward == 0:
-                return SequenceAnomaly.DUPLICATE
-            if forward > self.modulus // 2:
-                self.last_sequence = sequence
-                return SequenceAnomaly.ROLLBACK
-            self.last_sequence = sequence
-            return SequenceAnomaly.GAP
-
-        if sequence < self.last_sequence:
-            self.last_sequence = sequence
-            return SequenceAnomaly.ROLLBACK
-        self.last_sequence = sequence
-        return SequenceAnomaly.GAP
+    def result(self, sequence: int) -> SequenceResult:
+        prev = self._last
+        anomaly = self.observe(sequence)
+        expected = None
+        if prev is not None:
+            expected = prev + 1
+            mask = self._wrap_mask()
+            if mask is not None:
+                expected = expected & mask
+        return SequenceResult(
+            previous=prev,
+            current=sequence,
+            expected=expected,
+            anomaly=anomaly,
+        )
