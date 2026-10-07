@@ -22,7 +22,7 @@ def test_gate_state_ready():
                 "bit_length": 16,
                 "is_signed": True,
                 "scale": 0.1,
-                "unit": "\u00b0C",
+                "unit": "°C",
                 "min_value": -40,
                 "max_value": 125,
             }],
@@ -41,6 +41,8 @@ def test_gate_state_ready():
     assert h["observations_emitted"] == 1
     assert "diagnostics_emitted" in h
     assert "active_nodes" in h
+    assert "stale_nodes" in h
     assert h["schema_id"] == "s"
+    # backward-compat keys
     assert h["frames_in"] == 1
     assert h["observations_out"] == 1
