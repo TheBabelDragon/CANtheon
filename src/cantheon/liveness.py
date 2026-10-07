@@ -32,6 +32,7 @@ class LivenessTracker:
 
     def __post_init__(self) -> None:
         if self.stale_threshold_ns is None:
+            # default: stale at 50% of timeout
             self.stale_threshold_ns = self.timeout_threshold_ns // 2
         if self.stale_threshold_ns > self.timeout_threshold_ns:
             raise ValueError("stale_threshold_ns must be <= timeout_threshold_ns")
