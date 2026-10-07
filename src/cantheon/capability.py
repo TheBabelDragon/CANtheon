@@ -58,6 +58,9 @@ class NodeCapability:
     capabilities: tuple[str, ...] = ()
     last_seen_ns: Optional[int] = None
     health: str = "UNKNOWN"
+    supported_frame_formats: tuple[str, ...] = ("CLASSICAL_CAN", "CAN_FD")
+    supported_identifier_formats: tuple[str, ...] = ("STANDARD_11", "EXTENDED_29")
+    max_payload_size: int = 64
 
     def to_dict(self) -> dict:
         return {
@@ -69,4 +72,7 @@ class NodeCapability:
             "capabilities": list(self.capabilities),
             "last_seen_ns": self.last_seen_ns,
             "health": self.health,
+            "supported_frame_formats": list(self.supported_frame_formats),
+            "supported_identifier_formats": list(self.supported_identifier_formats),
+            "max_payload_size": self.max_payload_size,
         }
