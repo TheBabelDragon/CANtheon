@@ -19,12 +19,13 @@ class Provenance:
     sequence: int
     timestamp_ns: int
     schema_version: str
+    schema_id: str = ""
     raw_data_hex: str = ""
-    parent_observation_id: Optional[str] = None  # if transformed
+    parent_observation_id: Optional[str] = None
     extra: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict:
-        d = {
+        d: dict[str, Any] = {
             "node_id": self.node_id,
             "can_message_id": self.can_message_id,
             "can_message_id_hex": f"0x{self.can_message_id:03X}",
@@ -32,6 +33,7 @@ class Provenance:
             "sequence": self.sequence,
             "timestamp_ns": self.timestamp_ns,
             "schema_version": self.schema_version,
+            "schema_id": self.schema_id,
             "raw_data_hex": self.raw_data_hex,
         }
         if self.parent_observation_id is not None:
