@@ -19,7 +19,7 @@ def test_discover_nodes():
                 "name": "Temperature",
                 "start_bit": 0,
                 "bit_length": 16,
-                "unit": "\u00b0C",
+                "unit": "°C",
                 "min_value": -40.0,
                 "max_value": 125.0,
             }],
@@ -29,9 +29,14 @@ def test_discover_nodes():
     assert len(caps) == 1
     nc = caps[0]
     assert nc.node_id == "temp_sensor_01"
+    assert nc.node_name == "Temp Sensor"
     assert nc.schema_id == "temp.v1"
+    assert nc.schema_version == "1.0"
     assert "temperature" in nc.capabilities
     assert len(nc.messages) == 1
+    assert nc.messages[0].message_id == 0x100
+    assert nc.messages[0].signals[0].signal_id == "temperature"
+    assert nc.messages[0].signals[0].unit == "°C"
 
 
 def test_node_capabilities():

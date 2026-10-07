@@ -31,12 +31,13 @@ def test_source_vs_ingest_timestamp():
                 "bit_length": 16,
                 "is_signed": True,
                 "scale": 0.1,
-                "unit": "\u00b0C",
+                "unit": "°C",
             }],
         }],
     })
     rt = Runtime(reg, Node("n1", "N"), sink=InMemorySink(), clock=clock)
     data = bytes([250 & 0xFF, 0])
+    # source timestamp on frame; explicit ingest
     frame = CanFrame(can_id=0x100, data=data, timestamp_ns=42)
     obs = rt.process(frame, ingest_timestamp_ns=100)[0]
     assert obs.source_timestamp_ns == 42
@@ -62,11 +63,12 @@ def test_no_source_timestamp_is_none():
                 "bit_length": 16,
                 "is_signed": True,
                 "scale": 0.1,
-                "unit": "\u00b0C",
+                "unit": "°C",
             }],
         }],
     })
     rt = Runtime(reg, Node("n1", "N"), sink=InMemorySink(), clock=clock)
+    # frame with no timestamp
     frame = CanFrame(can_id=0x100, data=bytes([250 & 0xFF, 0]))
     obs = rt.process(frame, ingest_timestamp_ns=5000)[0]
     assert obs.source_timestamp_ns is None
