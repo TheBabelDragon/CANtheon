@@ -2,6 +2,9 @@
 
 Supports unsigned/signed integers, configurable bit offset/length,
 scale, offset, endianness, and units. No silent unit conversion.
+
+v0.2: every MessageDef carries schema_id + schema_version.
+Optional sequence field and heartbeat designation.
 """
 
 from __future__ import annotations
@@ -9,6 +12,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Optional
+
+from .schema_compat import SchemaIdentity
+from .frame import FrameFormat, IdentifierFormat
 
 
 class Endianness(str, Enum):
@@ -22,7 +28,7 @@ class SignalDef:
 
     signal_id: str
     name: str
-    start_bit: int  # bit offset from start of payload (LSB-first numbering)
+    start_bit: int
     bit_length: int
     is_signed: bool = False
     scale: float = 1.0
@@ -32,6 +38,7 @@ class SignalDef:
     min_value: Optional[float] = None
     max_value: Optional[float] = None
     description: str = ""
+    is_sequence: bool = False  # marks this signal as the sequence field
 
     def __post_init__(self) -> None:
         if self.bit_length < 1 or self.bit_length > 64:
@@ -44,18 +51,38 @@ class SignalDef:
 class MessageDef:
     """Definition of one CAN message (by 11-bit ID)."""
 
-    message_id: int  # CAN ID
+    message_id: int
     name: str
     signals: tuple[SignalDef, ...] = field(default_factory=tuple)
-    dlc: Optional[int] = None  # expected DLC if fixed
+    dlc: Optional[int] = None
     description: str = ""
     schema_version: str = "1.0"
+    schema_id: str = ""
+    is_heartbeat: bool = False
+    sequence_width: Optional[int] = None  # bit width if sequence tracking enabled
+    # Transport requirements (v0.2.1)
+    frame_format: str = "EITHER"  # CLASSICAL_CAN | CAN_FD | EITHER
+    identifier_format: str = "EITHER"  # STANDARD_11 | EXTENDED_29 | EITHER
+    max_payload: Optional[int] = None  # None = format default
 
     def __post_init__(self) -> None:
         if not (0 <= self.message_id <= 0x7FF):
             raise ValueError(
                 f"message_id must be 0..0x7FF, got 0x{self.message_id:X}"
             )
+
+    @property
+    def schema_identity(self) -> SchemaIdentity:
+        return SchemaIdentity(
+            schema_id=self.schema_id or "unknown",
+            schema_version=self.schema_version,
+        )
+
+    def sequence_signal(self) -> Optional[SignalDef]:
+        for s in self.signals:
+            if s.is_sequence:
+                return s
+        return None
 
 
 def _extract_raw_bits(
@@ -71,7 +98,6 @@ def _extract_raw_bits(
     start bit as the MSB of the field.
     """
     if endianness == Endianness.LITTLE:
-        # Intel / little-endian: start_bit is the least-significant bit
         value = 0
         for i in range(bit_length):
             bit_pos = start_bit + i
@@ -86,11 +112,8 @@ def _extract_raw_bits(
                 value |= 1 << i
         return value
     else:
-        # Motorola / big-endian: start_bit is the most-significant bit
-        # We walk downward in bit significance.
         value = 0
         for i in range(bit_length):
-            # bit index relative to start (MSB first)
             bit_pos = start_bit - i
             if bit_pos < 0:
                 raise ValueError("big-endian signal start_bit too small")
@@ -107,16 +130,11 @@ def _extract_raw_bits(
 
 
 def extract_signal(data: bytes, sig: SignalDef) -> tuple[int, float]:
-    """Extract raw integer and engineering value from payload.
-
-    Returns (raw_int, engineering_value).
-    Raises ValueError on out-of-bounds access.
-    """
+    """Extract raw integer and engineering value from payload."""
     raw = _extract_raw_bits(
         data, sig.start_bit, sig.bit_length, sig.endianness
     )
     if sig.is_signed:
-        # two's complement
         sign_bit = 1 << (sig.bit_length - 1)
         if raw & sign_bit:
             raw = raw - (1 << sig.bit_length)
@@ -141,6 +159,7 @@ def signal_def_from_dict(d: dict[str, Any]) -> SignalDef:
         min_value=d.get("min_value"),
         max_value=d.get("max_value"),
         description=str(d.get("description", "")),
+        is_sequence=bool(d.get("is_sequence", False)),
     )
 
 
@@ -155,4 +174,10 @@ def message_def_from_dict(d: dict[str, Any]) -> MessageDef:
         dlc=d.get("dlc"),
         description=str(d.get("description", "")),
         schema_version=str(d.get("schema_version", "1.0")),
+        schema_id=str(d.get("schema_id", "")),
+        is_heartbeat=bool(d.get("is_heartbeat", False)),
+        sequence_width=d.get("sequence_width"),
+        frame_format=str(d.get("frame_format", "EITHER")),
+        identifier_format=str(d.get("identifier_format", "EITHER")),
+        max_payload=d.get("max_payload"),
     )
