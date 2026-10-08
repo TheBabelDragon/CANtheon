@@ -77,6 +77,8 @@ f = CanFrame.can_fd(0x200, bytes(64), brs=True, extended=True)
 - Node liveness, deterministic record/replay
 - Schema identity and transport-aware schema contracts
 - CANgate lifecycle and health
+- Sensor-neutral spatial / ToF observation families (v0.3)
+- Deterministic spatial serialization and zone→point calibration
 
 ## What CANtheon does **not** own
 
@@ -84,6 +86,7 @@ f = CanFrame.can_fd(0x200, bytes(64), brs=True, extended=True)
 - Machine-learning inference
 - Autonomous control authority
 - Physical CAN-FD hardware drivers
+- Vendor ToF / camera SDKs (reference adapters are host-only)
 
 ## Time Semantics
 
@@ -101,6 +104,88 @@ Recorded streams (including full CAN-FD transport metadata) replay without hardw
 live frames → Recorder → JSONL → Replay.run(runtime)
 → identical canonical observations + diagnostics
 ```
+
+## Spatial / ToF Observations (v0.3)
+
+CANtheon is **sensor-neutral**.  Spatial observations are a first-class,
+typed family independent of Classical CAN / CAN-FD transport.
+
+```
+RAW SENSOR
+     ↓
+SENSOR OBSERVATION   (RANGE, TOF_ZONE, IMU, …)
+     ↓
+DERIVED SPATIAL DATA (POINT3D, …)
+     ↓
+GEOMETRY             (GEOMETRY_OBSERVATION)
+```
+
+### Observation families
+
+| Kind | Purpose | Key fields |
+|------|---------|------------|
+| `RANGE` | Single range / distance | `range_mm`, status, confidence, optional zone |
+| `TOF_ZONE` | One zone of a multizone ToF | zone_id/x/y, `range_mm`, signal, ambient |
+| `POINT3D` | Cartesian point (derived) | `x/y/z_mm`, reference_frame_id, source_sequences |
+| `IMU` | Inertial sample | ax/ay/az, gx/gy/gz, explicit unit enums |
+| `GEOMETRY` | Derived primitive | geometry_type, parameters, source_sequences |
+
+### Units, widths, validity
+
+All wire encodings are **little-endian**, integer / fixed-point.  No floating-point on the wire.
+
+| Field | Unit | Wire type | Notes |
+|-------|------|-----------|-------|
+| `range_mm` | millimetres | uint32 | `0xFFFFFFFF` = unavailable |
+| `x/y/z_mm` | millimetres | int32 | signed |
+| `confidence` | 0.01 % | uint16 | `0xFFFF` = unknown; `10000` = 100 % |
+| `timestamp_ns` | nanoseconds | int64 | same convention as v0.2 |
+| `sequence` | unitless | uint64 | source ordering |
+| `signal_rate_kcps_x100` | kcps × 100 | int32 | −1 = unavailable |
+| `status` | enum | int32 | VALID / INVALID / UNAVAILABLE / … |
+
+Invalid or unavailable measurements are **never** silently converted to zero.
+A genuine contact range of 0 mm remains `VALID` with `range_mm = 0`.
+
+Every derived observation carries `source_sequences` so provenance answers:
+*“Which source measurement produced this value?”*
+
+Schema identity: `cantheon.spatial@0.3.0`.
+
+### VL53L5CX reference adapter
+
+An 8×8 multizone ToF source is represented by a **hardware-independent**
+reference adapter (`cantheon.adapters.vl53l5cx`).  No vendor SDK is required;
+synthetic frames are fully host-testable.
+
+```python
+from cantheon.adapters.vl53l5cx import (
+    VL53L5CXAdapter, make_synthetic_8x8, default_forward_calibration,
+)
+from cantheon.spatial import encode_frame, zone_to_point3d
+
+cal = default_forward_calibration(frame_id="tof0")
+frame = make_synthetic_8x8(
+    valid_ranges={0: 500, 36: 800, 63: 1200},
+    invalid_zones=[1],
+    sequence=42,
+)
+adapter = VL53L5CXAdapter(calibration=cal)
+
+# 64 TOF_ZONE_OBSERVATION records
+zones = adapter.produce(frame)
+
+# selected POINT3D_OBSERVATION (valid zones only have VALID status)
+points = adapter.produce_points(frame)
+
+# optional GEOMETRY_OBSERVATION retains source sequences
+```
+
+An 8×8 ToF sensor is **not** a depth camera.  The adapter produces zone
+ranges and optional calibrated points; it does not invent image semantics.
+
+Future optical, IR, radar, or other physical sensors can emit the same
+observation families without changing the core model.
 
 ## Install
 
