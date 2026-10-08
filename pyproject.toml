@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cantheon"
-version = "0.2.1"
+version = "0.3.0"
 description = "CANtheon converts distributed Classical CAN and CAN-FD traffic into canonical, validated, provenance-preserving physical state for the MetaField ecosystem."
 readme = "README.md"
 license = { text = "MIT" }
