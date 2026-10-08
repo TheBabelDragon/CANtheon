@@ -28,7 +28,30 @@ from .capability import NodeCapability, MessageCapability, SignalCapability
 from .schema_compat import SchemaIdentity, Compatibility, check_compatibility
 from .record import Recorder, Replay, RecordedEvent
 
-__version__ = "0.2.1"
+# Spatial / ToF observations (v0.3) — sensor-neutral
+from .spatial import (
+    ObservationKind as SpatialObservationKind,
+    ValidityStatus as SpatialValidityStatus,
+    GeometryType,
+    AccelUnit,
+    GyroUnit,
+    SPATIAL_SCHEMA_ID,
+    SPATIAL_SCHEMA_VERSION,
+    RangeObservation,
+    TofZoneObservation,
+    Point3DObservation,
+    ImuObservation,
+    GeometryObservation,
+    ReferenceFrame,
+    ZoneCalibration,
+    zone_to_point3d,
+    encode_observation as encode_spatial_observation,
+    decode_observation as decode_spatial_observation,
+    encode_frame as encode_spatial_frame,
+    decode_frame as decode_spatial_frame,
+)
+
+__version__ = "0.3.0"
 
 __all__ = [
     "CanFrame",
@@ -72,5 +95,24 @@ __all__ = [
     "Recorder",
     "Replay",
     "RecordedEvent",
+    "SpatialObservationKind",
+    "SpatialValidityStatus",
+    "GeometryType",
+    "AccelUnit",
+    "GyroUnit",
+    "SPATIAL_SCHEMA_ID",
+    "SPATIAL_SCHEMA_VERSION",
+    "RangeObservation",
+    "TofZoneObservation",
+    "Point3DObservation",
+    "ImuObservation",
+    "GeometryObservation",
+    "ReferenceFrame",
+    "ZoneCalibration",
+    "zone_to_point3d",
+    "encode_spatial_observation",
+    "decode_spatial_observation",
+    "encode_spatial_frame",
+    "decode_spatial_frame",
     "__version__",
 ]
