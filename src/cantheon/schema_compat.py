@@ -24,6 +24,13 @@ class SchemaIdentity:
     def __str__(self) -> str:
         return f"{self.schema_id}@{self.schema_version}"
 
+    def to_dict(self) -> dict:
+        return {"schema_id": self.schema_id, "schema_version": self.schema_version}
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "SchemaIdentity":
+        return cls(schema_id=str(d.get("schema_id", "")), schema_version=str(d.get("schema_version", "")))
+
     @property
     def major(self) -> int:
         try:
