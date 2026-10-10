@@ -99,8 +99,7 @@ class SchemaRegistry:
         path: str | Path,
         node_id: Optional[str] = None,
     ) -> None:
-        p = Path(path)
-        with p.open("r", encoding="utf-8") as f:
+        with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
         self.load_dict(data, node_id=node_id)
 
@@ -109,6 +108,10 @@ class SchemaRegistry:
 
     def check_schema(self, actual: SchemaIdentity) -> Compatibility:
         return check_compatibility(self.schema_identity, actual)
+
+    def discover(self) -> list[NodeCapability]:
+        """Alias for discover_capabilities (public discovery API)."""
+        return self.discover_capabilities()
 
     def discover_capabilities(self) -> list[NodeCapability]:
         """Return capabilities for all known nodes."""
