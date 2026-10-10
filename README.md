@@ -187,6 +187,17 @@ ranges and optional calibrated points; it does not invent image semantics.
 Future optical, IR, radar, or other physical sensors can emit the same
 observation families without changing the core model.
 
+## Shared Evidence Contract
+
+Phase 1–2 foundation for the cross-repository evidence path is documented in:
+
+- [`docs/SHARED_EVIDENCE_CONTRACT.md`](docs/SHARED_EVIDENCE_CONTRACT.md) — canonical envelope, ownership, failure rules
+- [`docs/METAFIELD_INTEGRATION.md`](docs/METAFIELD_INTEGRATION.md) — three-layer boundary and host-side contract
+
+CANtheon produces the canonical, versioned, provenance-preserving observation envelope.
+CANgate is the adapter boundary inside this repository. Downstream projects
+(MetaField, TensorGate, …) consume the envelope without CANtheon importing them.
+
 ## Install
 
 ```bash
