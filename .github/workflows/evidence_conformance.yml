@@ -1,0 +1,62 @@
+name: Evidence Conformance
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  cross-repo-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout CANtheon
+        uses: actions/checkout@v4
+        with:
+          path: CANtheon
+
+      - name: Checkout metafield
+        uses: actions/checkout@v4
+        with:
+          repository: TheBabelDragon/metafield
+          path: metafield
+
+      - name: Checkout TensorGate
+        uses: actions/checkout@v4
+        with:
+          repository: TheBabelDragon/TensorGate
+          path: TensorGate
+
+      - name: Checkout MultiFlow
+        uses: actions/checkout@v4
+        with:
+          repository: TheBabelDragon/MultiFlow
+          path: MultiFlow
+
+      - name: Checkout aurora-swarm-btc
+        uses: actions/checkout@v4
+        with:
+          repository: TheBabelDragon/aurora-swarm-btc
+          path: aurora-swarm-btc
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install -U pip
+          python -m pip install -e "CANtheon[dev]"
+          python -m pip install -e "TensorGate"
+          python -m pip install -e "MultiFlow"
+          python -m pip install numpy pydantic
+
+      - name: Cross-repo conformance smoke
+        working-directory: CANtheon
+        run: python scripts/evidence_conformance_smoke.py
+
+      - name: Live host wiring
+        working-directory: CANtheon
+        run: python examples/live_host_wiring.py

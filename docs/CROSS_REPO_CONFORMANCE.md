@@ -27,6 +27,14 @@ PASS  mesh content_hash=…
 Path: CANtheon → MetaField → TensorGate → MultiFlow → Aurora Mesh
 ```
 
+## Live host wiring
+
+```bash
+python examples/live_host_wiring.py
+```
+
+CAN frame → CANgate.on_publish → MetaField → MultiFlow DecisionEvidence → Aurora Mesh.
+
 ## What each step asserts
 
 | Step | Checks |
@@ -44,6 +52,16 @@ Path: CANtheon → MetaField → TensorGate → MultiFlow → Aurora Mesh
 - DETERMINISTIC TensorGate lineage (no model_id)
 - Solver proposals ≠ admitted results
 - Mesh never rewrites history (duplicate = idempotent)
+
+## CI
+
+GitHub Actions workflow `.github/workflows/evidence_conformance.yml` checks out the
+five sibling repositories and runs:
+
+1. `scripts/evidence_conformance_smoke.py`
+2. `examples/live_host_wiring.py`
+
+Unit tests run separately in `.github/workflows/ci.yml`.
 
 ## Related docs
 
