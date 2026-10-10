@@ -38,6 +38,11 @@ class SequenceTracker:
         return self._last
 
     @property
+    def last_sequence(self) -> Optional[int]:
+        """Alias for .last — used by tests and external callers."""
+        return self._last
+
+    @property
     def count(self) -> int:
         return self._count
 
