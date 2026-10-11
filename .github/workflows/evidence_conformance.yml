@@ -95,3 +95,15 @@ jobs:
       - name: Live host wiring
         working-directory: CANtheon
         run: python examples/live_host_wiring.py
+
+      - name: Controlled demonstrator
+        working-directory: CANtheon
+        run: python examples/chimera_controlled_demonstrator.py -o /tmp/chimera_demo_report.json
+
+      - name: Upload demonstrator report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: chimera-demo-report
+          path: /tmp/chimera_demo_report.json
+          if-no-files-found: ignore
