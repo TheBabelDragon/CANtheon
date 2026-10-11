@@ -10,36 +10,59 @@ on:
 jobs:
   cross-repo-smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Checkout CANtheon
         uses: actions/checkout@v4
         with:
           path: CANtheon
 
-      - name: Checkout metafield
+      - name: Read compatibility manifest
+        id: manifest
+        working-directory: CANtheon
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          m = json.loads(Path("config/chimera-compatibility.json").read_text())
+          repos = m["repositories"]
+          for name, entry in repos.items():
+              if name == "CANtheon":
+                  continue
+              sha = entry["commit"]
+              key = name.replace("-", "_")
+              print(f"{name}={sha}")
+              with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
+                  fh.write(f"{key}={sha}\n")
+          PY
+
+      - name: Checkout metafield (pinned)
         uses: actions/checkout@v4
         with:
           repository: TheBabelDragon/metafield
           path: metafield
+          ref: ${{ steps.manifest.outputs.metafield }}
 
-      - name: Checkout TensorGate
+      - name: Checkout TensorGate (pinned)
         uses: actions/checkout@v4
         with:
           repository: TheBabelDragon/TensorGate
           path: TensorGate
+          ref: ${{ steps.manifest.outputs.TensorGate }}
 
-      - name: Checkout MultiFlow
+      - name: Checkout MultiFlow (pinned)
         uses: actions/checkout@v4
         with:
           repository: TheBabelDragon/MultiFlow
           path: MultiFlow
+          ref: ${{ steps.manifest.outputs.MultiFlow }}
 
-      - name: Checkout aurora-swarm-btc
+      - name: Checkout aurora-swarm-btc (pinned)
         uses: actions/checkout@v4
         with:
           repository: TheBabelDragon/aurora-swarm-btc
           path: aurora-swarm-btc
+          ref: ${{ steps.manifest.outputs.aurora_swarm_btc }}
 
       - uses: actions/setup-python@v5
         with:
@@ -52,6 +75,18 @@ jobs:
           python -m pip install -e "TensorGate"
           python -m pip install -e "MultiFlow"
           python -m pip install numpy pydantic
+
+      - name: Validate compatibility manifest
+        working-directory: CANtheon
+        run: python scripts/validate_chimera_manifest.py
+
+      - name: Unit tests
+        working-directory: CANtheon
+        run: python -m pytest -q --tb=short
+
+      - name: Failure-injection tests
+        working-directory: CANtheon
+        run: python -m pytest tests/test_chimera_failure_injection.py -q --tb=short
 
       - name: Cross-repo conformance smoke
         working-directory: CANtheon
