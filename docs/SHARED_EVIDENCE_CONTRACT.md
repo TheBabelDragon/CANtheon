@@ -1,6 +1,7 @@
 # Shared Evidence Contract — Phase 1 & 2 (CANtheon / CANgate)
 
-**Status:** Phase 1 (transport + envelope foundation) and Phase 2 (CANgate adapter conformance) implemented on `main` (v0.3.x).
+**Status:** Phase 1 (transport + envelope foundation) and Phase 2 (CANgate adapter conformance) implemented on `main` (v0.3.x).  
+**Chimera gate:** v1.1 — see `config/chimera-compatibility.json` and `docs/CROSS_REPO_CONFORMANCE.md`.
 
 CANtheon is the transport- and evidence-foundation for the shared, versioned evidence path:
 
@@ -41,14 +42,15 @@ Serialization is deterministic where the data and format permit. Missing values 
 
 ## Phase 2 — CANgate adapter conformance
 
-Covered by `tests/test_cangate.py`:
+Covered by `tests/test_cangate.py` and `tests/test_chimera_failure_injection.py`:
 
 - Envelope fields survive CANgate → `observation_to_boundary` / `event_to_boundary`
 - Incompatible schema versions raise `BoundaryError` (fail-closed)
 - Dual timestamps, sequence, quality, and provenance are preserved
 - Duplicate ingest produces distinct sequences; envelopes remain valid
-- Missing source timestamp is explicit (not fabricated)
+- Missing source timestamp is explicit (not fabricated on the envelope)
 - Record → replay → boundary envelope is deterministic
+- Identical canonical input yields identical envelope
 
 ## Downstream hand-off
 
@@ -56,15 +58,22 @@ See `docs/METAFIELD_INTEGRATION.md` and `cantheon.adapters.metafield_contract`.
 
 Consumers map the boundary envelope into their own types (FieldObservation, tensor lineage, schedule decisions, mesh objects). CANtheon stops at the physical-state + evidence boundary.
 
+Authoritative contract versions and repository pins live in `config/chimera-compatibility.json`.
+
 ## Verification
 
 ```bash
 python -m pip install -e ".[dev]"
+python scripts/validate_chimera_manifest.py
 python -m pytest -q
+python -m pytest tests/test_chimera_failure_injection.py -q
+# With sibling checkouts at pinned SHAs:
+python scripts/evidence_conformance_smoke.py
+python examples/live_host_wiring.py
 ```
 
-All transport, envelope, record/replay, schema, CANgate conformance, and boundary tests must pass before MetaField / TensorGate integration work begins.
+All transport, envelope, record/replay, schema, CANgate conformance, boundary, and Chimera failure-injection tests must pass before treating the path as READY_FOR_DEMONSTRATOR.
 
 ## Next
 
-Phase 3 (external repos): MetaField semantic interpretation → TensorGate computational lineage → MultiFlow → Aurora Mesh. Keep each project on its own default branch until its feature branch passes review and the integration contract is verified.
+Phase 3+ (external repos) is exercised by the pinned conformance path. Keep each project on its own default branch; advance pins only after intentional verification (see update procedure in `docs/CROSS_REPO_CONFORMANCE.md`).
