@@ -10,7 +10,7 @@ on:
 jobs:
   cross-repo-smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - name: Checkout CANtheon
         uses: actions/checkout@v4
@@ -107,3 +107,15 @@ jobs:
           name: chimera-demo-report
           path: /tmp/chimera_demo_report.json
           if-no-files-found: ignore
+
+      - name: Adaptive scheduling demonstrator
+        working-directory: CANtheon
+        run: python examples/chimera_adaptive_scheduling_demo.py -o /tmp/chimera_adaptive_report.json
+
+      - name: Upload adaptive scheduling report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: chimera-adaptive-report
+          path: /tmp/chimera_adaptive_report.json
+          if-no-files-found: error
