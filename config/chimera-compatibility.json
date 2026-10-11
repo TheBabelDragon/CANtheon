@@ -1,5 +1,5 @@
 {
-  "manifest_version": "1.2",
+  "manifest_version": "1.3",
   "name": "Chimera Readiness Gate — Shared Evidence Contract",
   "description": "Pinned cross-repository evidence path for controlled Chimera demonstrator. Exact commit SHAs lock the integration surface.",
   "path": "CANtheon → MetaField → TensorGate → MultiFlow → Aurora Mesh",
@@ -70,40 +70,15 @@
     }
   },
   "compatibility_relationships": [
-    {
-      "from": "CANtheon",
-      "to": "metafield",
-      "interface": "cantheon.metafield_boundary@0.3.0 → FieldObservation + EvidenceLineage",
-      "adapter": "metafield/adapters/cantheon_boundary.py"
-    },
-    {
-      "from": "metafield",
-      "to": "TensorGate",
-      "interface": "EvidenceLineage → ComputationalLineage (evidence_refs)",
-      "adapter": "tensorgate.attach_evidence_ref"
-    },
-    {
-      "from": "TensorGate",
-      "to": "MultiFlow",
-      "interface": "ComputationalLineage → DecisionEvidence (evidence_refs)",
-      "adapter": "multiflow.attach_evidence_ref"
-    },
-    {
-      "from": "MultiFlow",
-      "to": "aurora-swarm-btc",
-      "interface": "DecisionEvidence → EvidenceObject (content-hash + evidence_refs)",
-      "adapter": "mods.evidence_integrity.build_evidence_object"
-    }
+    {"from": "CANtheon", "to": "metafield", "interface": "cantheon.metafield_boundary@0.3.0 → FieldObservation + EvidenceLineage", "adapter": "metafield/adapters/cantheon_boundary.py"},
+    {"from": "metafield", "to": "TensorGate", "interface": "EvidenceLineage → ComputationalLineage (evidence_refs)", "adapter": "tensorgate.attach_evidence_ref"},
+    {"from": "TensorGate", "to": "MultiFlow", "interface": "ComputationalLineage → DecisionEvidence (evidence_refs)", "adapter": "multiflow.attach_evidence_ref"},
+    {"from": "MultiFlow", "to": "aurora-swarm-btc", "interface": "DecisionEvidence → EvidenceObject (content-hash + evidence_refs)", "adapter": "mods.evidence_integrity.build_evidence_object"}
   ],
   "dependencies": {
     "python": ">=3.11",
     "packages": ["pytest>=7.0", "numpy", "pydantic"],
-    "install": [
-      "pip install -e CANtheon[dev]",
-      "pip install -e TensorGate",
-      "pip install -e MultiFlow",
-      "pip install numpy pydantic"
-    ]
+    "install": ["pip install -e CANtheon[dev]", "pip install -e TensorGate", "pip install -e MultiFlow", "pip install numpy pydantic"]
   },
   "verification_commands": {
     "validate_manifest": "python scripts/validate_chimera_manifest.py",
@@ -111,21 +86,24 @@
     "smoke": "python scripts/evidence_conformance_smoke.py",
     "live_host": "python examples/live_host_wiring.py",
     "failure_injection": "python -m pytest tests/test_chimera_failure_injection.py -q --tb=short",
-    "demonstrator": "python examples/chimera_controlled_demonstrator.py"
+    "demonstrator": "python examples/chimera_controlled_demonstrator.py",
+    "adaptive_scheduling": "python examples/chimera_adaptive_scheduling_demo.py"
   },
   "verification_status": {
-    "unit_tests": "PASS local 185",
-    "failure_injection": "PASS local 24 behavior-driven",
-    "smoke": "PASS local",
-    "live_host": "PASS local",
-    "controlled_demonstrator": "PASS local valid+invalid",
-    "ci_pinned_checkout": "pending"
+    "unit_tests": "PASS local 197",
+    "failure_injection": "PASS",
+    "smoke": "PASS",
+    "live_host": "PASS",
+    "controlled_demonstrator": "PASS (v1.2)",
+    "adaptive_scheduling": "PASS local",
+    "ci_pinned_checkout": "pending post-push CI"
   },
   "known_limitations": [
     "CANtheon pin is informational; CI checks out the triggering commit for CANtheon.",
     "Workflow checks out sibling repos at exact pinned SHAs.",
     "No production hardware or live CAN bus required for CI fixtures.",
     "TensorGate NONDETERMINISTIC paths are not exercised by this gate.",
+    "Adaptive scheduling uses synthetic fictional data only; not clinical validation.",
     "Human override coverage exercises MultiFlow DecisionEvidence API (append-only new records)."
   ],
   "update_procedure": "1. Verify new sibling commit passes local smoke + failure injection. 2. Update the commit SHA in this file. 3. Re-run validate_chimera_manifest.py and all verification_commands. 4. Commit the manifest change with a descriptive message referencing the sibling SHA. 5. Confirm CI uses the new pins."

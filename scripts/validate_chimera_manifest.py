@@ -19,7 +19,7 @@ DEFAULT_MANIFEST = REPO_ROOT / "config" / "chimera-compatibility.json"
 
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 VERSION_RE = re.compile(r"^\d+\.\d+(\.\d+)?$")
-SUPPORTED_MANIFEST_VERSIONS = frozenset({"1.1", "1.2"})
+SUPPORTED_MANIFEST_VERSIONS = frozenset({"1.1", "1.2", "1.3"})
 
 
 def fail(msg: str) -> None:
@@ -88,12 +88,8 @@ def validate(data: dict[str, Any]) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Validate Chimera compatibility manifest")
-    parser.add_argument(
-        "manifest",
-        nargs="?",
-        default=str(DEFAULT_MANIFEST),
-        help="path to chimera-compatibility.json",
-    )
+    parser.add_argument("manifest", nargs="?", default=str(DEFAULT_MANIFEST),
+                        help="path to chimera-compatibility.json")
     args = parser.parse_args(argv)
     path = Path(args.manifest)
     if not path.is_file():
