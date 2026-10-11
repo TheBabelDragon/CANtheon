@@ -70,15 +70,40 @@
     }
   },
   "compatibility_relationships": [
-    {"from": "CANtheon", "to": "metafield", "interface": "cantheon.metafield_boundary@0.3.0 → FieldObservation + EvidenceLineage", "adapter": "metafield/adapters/cantheon_boundary.py"},
-    {"from": "metafield", "to": "TensorGate", "interface": "EvidenceLineage → ComputationalLineage (evidence_refs)", "adapter": "tensorgate.attach_evidence_ref"},
-    {"from": "TensorGate", "to": "MultiFlow", "interface": "ComputationalLineage → DecisionEvidence (evidence_refs)", "adapter": "multiflow.attach_evidence_ref"},
-    {"from": "MultiFlow", "to": "aurora-swarm-btc", "interface": "DecisionEvidence → EvidenceObject (content-hash + evidence_refs)", "adapter": "mods.evidence_integrity.build_evidence_object"}
+    {
+      "from": "CANtheon",
+      "to": "metafield",
+      "interface": "cantheon.metafield_boundary@0.3.0 → FieldObservation + EvidenceLineage",
+      "adapter": "metafield/adapters/cantheon_boundary.py"
+    },
+    {
+      "from": "metafield",
+      "to": "TensorGate",
+      "interface": "EvidenceLineage → ComputationalLineage (evidence_refs)",
+      "adapter": "tensorgate.attach_evidence_ref"
+    },
+    {
+      "from": "TensorGate",
+      "to": "MultiFlow",
+      "interface": "ComputationalLineage → DecisionEvidence (evidence_refs)",
+      "adapter": "multiflow.attach_evidence_ref"
+    },
+    {
+      "from": "MultiFlow",
+      "to": "aurora-swarm-btc",
+      "interface": "DecisionEvidence → EvidenceObject (content-hash + evidence_refs)",
+      "adapter": "mods.evidence_integrity.build_evidence_object"
+    }
   ],
   "dependencies": {
     "python": ">=3.11",
     "packages": ["pytest>=7.0", "numpy", "pydantic"],
-    "install": ["pip install -e CANtheon[dev]", "pip install -e TensorGate", "pip install -e MultiFlow", "pip install numpy pydantic"]
+    "install": [
+      "pip install -e CANtheon[dev]",
+      "pip install -e TensorGate",
+      "pip install -e MultiFlow",
+      "pip install numpy pydantic"
+    ]
   },
   "verification_commands": {
     "validate_manifest": "python scripts/validate_chimera_manifest.py",
@@ -90,13 +115,13 @@
     "adaptive_scheduling": "python examples/chimera_adaptive_scheduling_demo.py"
   },
   "verification_status": {
-    "unit_tests": "PASS local 197",
-    "failure_injection": "PASS",
-    "smoke": "PASS",
-    "live_host": "PASS",
-    "controlled_demonstrator": "PASS (v1.2)",
-    "adaptive_scheduling": "PASS local",
-    "ci_pinned_checkout": "pending post-push CI"
+    "unit_tests": "PASS (CI + local)",
+    "failure_injection": "PASS (CI + local)",
+    "smoke": "PASS (CI + local)",
+    "live_host": "PASS (CI + local)",
+    "controlled_demonstrator": "PASS (v1.2, CI + local)",
+    "adaptive_scheduling": "PASS (v1.3, CI run 38120398073 + local)",
+    "ci_pinned_checkout": "PASS — Evidence Conformance success on 2bfb68b83c84 (run 38120398073)"
   },
   "known_limitations": [
     "CANtheon pin is informational; CI checks out the triggering commit for CANtheon.",

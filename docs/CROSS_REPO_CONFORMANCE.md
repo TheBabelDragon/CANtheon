@@ -1,6 +1,6 @@
 # Cross-repository Shared Evidence Contract — conformance path
 
-**Status:** Chimera Readiness Gate **v1.2** — behavior-driven failure injection + controlled demonstrator.
+**Status:** Chimera Readiness Gate **v1.3** — adaptive scheduling demonstrator on top of the v1.2 evidence path.
 
 ## Path
 
@@ -19,7 +19,7 @@ Exact sibling commit SHAs are locked in `config/chimera-compatibility.json`.
 - **Sibling pins** are exact: the Evidence Conformance workflow checks out those SHAs.
 - **CANtheon pin** is **informational** (baseline verified with those siblings). CI checks out the **triggering** CANtheon commit for the event under test.
 
-Update procedure: verify new sibling → edit SHA in manifest → run validator + all verification commands → commit → confirm CI.
+Update procedure: verify new sibling → edit SHA in the manifest → re-run `validate_chimera_manifest.py` and verification commands → commit → confirm CI uses the new pins.
 
 ## Verification commands
 
@@ -29,42 +29,42 @@ python -m pytest -q --tb=short
 python -m pytest tests/test_chimera_failure_injection.py -q --tb=short
 python scripts/evidence_conformance_smoke.py
 python examples/live_host_wiring.py
+python examples/chimera_controlled_demonstrator.py
+python examples/chimera_adaptive_scheduling_demo.py
+```
+
+## Controlled demonstrator (v1.2)
+
+```bash
 python examples/chimera_controlled_demonstrator.py -o /tmp/chimera_demo_report.json
 ```
 
-## What the failure-injection tests really exercise
+Synthetic end-to-end valid + invalid evidence scenarios. Report distinguishes PASS / FAIL / INCONCLUSIVE.
 
-| Area | Real boundary |
-|------|----------------|
-| Schema major / schema_id | CANtheon `assert_compatible` → `BoundaryError`; MetaField `boundary_to_field_observation` → `BoundaryAdapterError` |
-| Missing node_id | MetaField rejects with `BoundaryAdapterError` |
-| Dual timestamps | Preserved CANtheon → MetaField EvidenceLineage |
-| Quality preservation | OUT_OF_RANGE / INVALID not upgraded to VALID through MetaField |
-| Determinism | Identical inputs → identical envelopes; value change → different payload |
-| Decision admission | MultiFlow: ADMITTED requires `admitted_candidate_id`; PROPOSED ≠ ADMITTED; OVERRIDE is new record |
-| Mesh integrity | Aurora: content-hash identity, tamper → HASH_MISMATCH, replicate idempotent, schema fail-closed |
-
-## Controlled demonstrator
+## Adaptive scheduling (v1.3)
 
 ```bash
-python examples/chimera_controlled_demonstrator.py -o reports/chimera_demo.json
+python examples/chimera_adaptive_scheduling_demo.py -o /tmp/chimera_adaptive_report.json
 ```
 
-- **Valid scenario:** synthetic temperature observation through full path; admits a decision; mesh integrity VALID; replication accepted then duplicate.
-- **Invalid scenario:** injects incompatible boundary major version; expects `BoundaryAdapterError` at MetaField; must not admit or publish.
+See `docs/CHIMERA_ADAPTIVE_SCHEDULING.md`. Synthetic hospital-ops disruption; classical solver reassigns away from an offline resource. Acceptance criteria are computed from actual plans — not hard-coded success.
 
-Exit 0 only if both scenarios meet expectations. Synthetic fixtures only — not live hardware.
+## CI
 
-## Readiness states
+The **Evidence Conformance** workflow:
 
-| State | Meaning |
-|-------|---------|
-| BLOCKED | Required checks fail or pins missing |
-| READY_FOR_DEMONSTRATOR | Pinned integration + failure-injection pass |
-| DEMONSTRATOR_VERIFIED | Named demonstrator ran; valid PASS and invalid rejected; report recorded |
+1. Checks out sibling repos at the exact SHAs in the manifest
+2. Validates the manifest
+3. Runs unit, failure-injection, smoke, live-host, controlled demonstrator, and adaptive scheduling demonstrator
+4. Uploads `chimera-demo-report` and `chimera-adaptive-report` artifacts
 
-## Known gaps
+A successful adaptive demonstrator is required to produce a report (`if-no-files-found: error`).
 
-- TensorGate NONDETERMINISTIC paths not covered.
-- Human override is MultiFlow DecisionEvidence API (append-only new record), not a full operator UI path.
-- No live CAN bus / hardware in CI.
+## Readiness
+
+| Milestone | State |
+|-----------|--------|
+| v1.2 synthetic evidence path | DEMONSTRATOR_VERIFIED |
+| v1.3 adaptive scheduling | DEMONSTRATOR_VERIFIED |
+
+Not clinical validation, production readiness, or live hardware operation.
