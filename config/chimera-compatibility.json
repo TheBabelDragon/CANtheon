@@ -1,1 +1,132 @@
-PLACEHOLDER_WILL_FIX
+{
+  "manifest_version": "1.2",
+  "name": "Chimera Readiness Gate — Shared Evidence Contract",
+  "description": "Pinned cross-repository evidence path for controlled Chimera demonstrator. Exact commit SHAs lock the integration surface.",
+  "path": "CANtheon → MetaField → TensorGate → MultiFlow → Aurora Mesh",
+  "repositories": {
+    "CANtheon": {
+      "owner": "TheBabelDragon",
+      "repo": "CANtheon",
+      "commit": "2b3929198798a10c438220d1c3512621be6f570a",
+      "role": "transport + boundary envelope (cantheon.metafield_boundary@0.3.0)",
+      "required": true,
+      "pin_semantics": "informational",
+      "note": "Workflow checks out the triggering CANtheon commit. This SHA is the baseline verified with the sibling pins, not the revision under test."
+    },
+    "metafield": {
+      "owner": "TheBabelDragon",
+      "repo": "metafield",
+      "commit": "e1dec938462592a5c04f9aefe5dd5af17e5e5d42",
+      "role": "FieldObservation + EvidenceLineage semantic mapping",
+      "required": true
+    },
+    "TensorGate": {
+      "owner": "TheBabelDragon",
+      "repo": "TensorGate",
+      "commit": "0baf7d476471199575c4c6354fb117bb62603c85",
+      "role": "ComputationalLineage + numerical identity",
+      "required": true
+    },
+    "MultiFlow": {
+      "owner": "TheBabelDragon",
+      "repo": "MultiFlow",
+      "commit": "2cd7704aae6f8bec01490443354d6750731702ed",
+      "role": "DecisionEvidence (proposed vs admitted)",
+      "required": true
+    },
+    "aurora-swarm-btc": {
+      "owner": "TheBabelDragon",
+      "repo": "aurora-swarm-btc",
+      "commit": "130b6c65a3071c237e9a119b5db2e5999a12dc7a",
+      "role": "EvidenceStore integrity + append-only replication",
+      "required": true
+    }
+  },
+  "contracts": {
+    "cantheon.metafield_boundary": {
+      "version": "0.3.0",
+      "owner_repo": "CANtheon",
+      "schema_id": "cantheon.metafield_boundary"
+    },
+    "metafield.evidence_lineage": {
+      "version": "1.0",
+      "owner_repo": "metafield",
+      "notes": "EvidenceKind / EvidenceQuality / EvidenceLineage"
+    },
+    "tensorgate.lineage": {
+      "version": "1.0",
+      "owner_repo": "TensorGate",
+      "notes": "ComputationalLineage; DETERMINISTIC requires no model_id"
+    },
+    "multiflow.decision_evidence": {
+      "version": "1.0",
+      "owner_repo": "MultiFlow",
+      "notes": "DecisionEvidence; ADMITTED requires admitted_candidate_id"
+    },
+    "aurora.evidence_integrity": {
+      "version": "1.0",
+      "owner_repo": "aurora-swarm-btc",
+      "notes": "content-hash identity; fail-closed on hash/schema mismatch"
+    }
+  },
+  "compatibility_relationships": [
+    {
+      "from": "CANtheon",
+      "to": "metafield",
+      "interface": "cantheon.metafield_boundary@0.3.0 → FieldObservation + EvidenceLineage",
+      "adapter": "metafield/adapters/cantheon_boundary.py"
+    },
+    {
+      "from": "metafield",
+      "to": "TensorGate",
+      "interface": "EvidenceLineage → ComputationalLineage (evidence_refs)",
+      "adapter": "tensorgate.attach_evidence_ref"
+    },
+    {
+      "from": "TensorGate",
+      "to": "MultiFlow",
+      "interface": "ComputationalLineage → DecisionEvidence (evidence_refs)",
+      "adapter": "multiflow.attach_evidence_ref"
+    },
+    {
+      "from": "MultiFlow",
+      "to": "aurora-swarm-btc",
+      "interface": "DecisionEvidence → EvidenceObject (content-hash + evidence_refs)",
+      "adapter": "mods.evidence_integrity.build_evidence_object"
+    }
+  ],
+  "dependencies": {
+    "python": ">=3.11",
+    "packages": ["pytest>=7.0", "numpy", "pydantic"],
+    "install": [
+      "pip install -e CANtheon[dev]",
+      "pip install -e TensorGate",
+      "pip install -e MultiFlow",
+      "pip install numpy pydantic"
+    ]
+  },
+  "verification_commands": {
+    "validate_manifest": "python scripts/validate_chimera_manifest.py",
+    "unit": "python -m pytest -q --tb=short",
+    "smoke": "python scripts/evidence_conformance_smoke.py",
+    "live_host": "python examples/live_host_wiring.py",
+    "failure_injection": "python -m pytest tests/test_chimera_failure_injection.py -q --tb=short",
+    "demonstrator": "python examples/chimera_controlled_demonstrator.py"
+  },
+  "verification_status": {
+    "unit_tests": "PASS local 185",
+    "failure_injection": "PASS local 24 behavior-driven",
+    "smoke": "PASS local",
+    "live_host": "PASS local",
+    "controlled_demonstrator": "PASS local valid+invalid",
+    "ci_pinned_checkout": "pending"
+  },
+  "known_limitations": [
+    "CANtheon pin is informational; CI checks out the triggering commit for CANtheon.",
+    "Workflow checks out sibling repos at exact pinned SHAs.",
+    "No production hardware or live CAN bus required for CI fixtures.",
+    "TensorGate NONDETERMINISTIC paths are not exercised by this gate.",
+    "Human override coverage exercises MultiFlow DecisionEvidence API (append-only new records)."
+  ],
+  "update_procedure": "1. Verify new sibling commit passes local smoke + failure injection. 2. Update the commit SHA in this file. 3. Re-run validate_chimera_manifest.py and all verification_commands. 4. Commit the manifest change with a descriptive message referencing the sibling SHA. 5. Confirm CI uses the new pins."
+}
