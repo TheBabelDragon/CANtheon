@@ -10,6 +10,7 @@ Sibling checkouts (or installed packages) supply downstream adapters.
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any, List
@@ -33,6 +34,21 @@ for name, sub in (
 ):
     base = WORKSPACE / name
     _add(base / sub if sub else base)
+
+
+def _resolve_simple_problem() -> Path:
+    candidates: list[Path] = []
+    if os.environ.get("MULTIFLOW_ROOT"):
+        candidates.append(Path(os.environ["MULTIFLOW_ROOT"]) / "examples" / "simple.json")
+    for name in ("MultiFlow", "MultiFlow-gate", "multiflow"):
+        candidates.append(WORKSPACE / name / "examples" / "simple.json")
+    for c in candidates:
+        if c.is_file():
+            return c
+    raise FileNotFoundError(
+        "MultiFlow examples/simple.json not found; set MULTIFLOW_ROOT or place "
+        "a MultiFlow checkout next to CANtheon (workspace sibling)"
+    )
 
 
 class LiveHost:
@@ -105,7 +121,7 @@ class LiveHost:
         self._validate_obs = validate_observation
         self.field_observations: List[Any] = []
 
-        problem_path = WORKSPACE / "MultiFlow" / "examples" / "simple.json"
+        problem_path = _resolve_simple_problem()
         self.engine = LiveEngine(
             initial_problem=SchedulingProblem.from_json(str(problem_path))
         )
