@@ -7,39 +7,49 @@
     "CANtheon": {
       "owner": "TheBabelDragon",
       "repo": "CANtheon",
-      "commit": "2b3929198798a10c438220d1c3512621be6f570a",
+      "commit": "74b840698f9f2f0c0101378794e8780a2adc8f41",
       "role": "transport + boundary envelope (cantheon.metafield_boundary@0.3.0)",
       "required": true,
       "pin_semantics": "informational",
-      "note": "Workflow checks out the triggering CANtheon commit. This SHA is the baseline verified with the sibling pins, not the revision under test."
+      "note": "Workflow checks out the triggering CANtheon commit. This SHA is the baseline verified with the sibling pins, not the revision under test.",
+      "verified_at": "2026-10-19",
+      "verification": "local_conformance_pass"
     },
     "metafield": {
       "owner": "TheBabelDragon",
       "repo": "metafield",
-      "commit": "e1dec938462592a5c04f9aefe5dd5af17e5e5d42",
+      "commit": "44fed8f875dadad899667938613364859089a477",
       "role": "FieldObservation + EvidenceLineage semantic mapping",
-      "required": true
+      "required": true,
+      "verified_at": "2026-10-19",
+      "verification": "local_conformance_pass"
     },
     "TensorGate": {
       "owner": "TheBabelDragon",
       "repo": "TensorGate",
-      "commit": "0baf7d476471199575c4c6354fb117bb62603c85",
+      "commit": "5b9d8db9a7f0963adc004f413fd0d66e0440e123",
       "role": "ComputationalLineage + numerical identity",
-      "required": true
+      "required": true,
+      "verified_at": "2026-10-19",
+      "verification": "local_conformance_pass"
     },
     "MultiFlow": {
       "owner": "TheBabelDragon",
       "repo": "MultiFlow",
-      "commit": "2cd7704aae6f8bec01490443354d6750731702ed",
+      "commit": "317f223aa208a2be7f96bb91f0c193dfcdd46335",
       "role": "DecisionEvidence (proposed vs admitted)",
-      "required": true
+      "required": true,
+      "verified_at": "2026-10-19",
+      "verification": "local_conformance_pass"
     },
     "aurora-swarm-btc": {
       "owner": "TheBabelDragon",
       "repo": "aurora-swarm-btc",
-      "commit": "130b6c65a3071c237e9a119b5db2e5999a12dc7a",
+      "commit": "a5d08813e35150a3f6fcff3d8349c3e0770ae53a",
       "role": "EvidenceStore integrity + append-only replication",
-      "required": true
+      "required": true,
+      "verified_at": "2026-10-19",
+      "verification": "local_conformance_pass"
     }
   },
   "contracts": {
@@ -115,13 +125,13 @@
     "adaptive_scheduling": "python examples/chimera_adaptive_scheduling_demo.py"
   },
   "verification_status": {
-    "unit_tests": "PASS (CI + local)",
-    "failure_injection": "PASS (CI + local)",
-    "smoke": "PASS (CI + local)",
-    "live_host": "PASS (CI + local)",
-    "controlled_demonstrator": "PASS (v1.2, CI + local)",
-    "adaptive_scheduling": "PASS (v1.3, CI run 38120398073 + local)",
-    "ci_pinned_checkout": "PASS — Evidence Conformance success on 2bfb68b83c84 (run 38120398073)"
+    "unit_tests": "PASS (192 local 2026-10-19)",
+    "failure_injection": "PASS (19 local 2026-10-19)",
+    "smoke": "PASS (local 2026-10-19)",
+    "live_host": "PASS (local 2026-10-19)",
+    "controlled_demonstrator": "PASS (v1.2 local 2026-10-19)",
+    "adaptive_scheduling": "PASS (v1.3 local 2026-10-19)",
+    "ci_pinned_checkout": "PENDING — pin refresh PR; re-run Evidence Conformance after merge"
   },
   "known_limitations": [
     "CANtheon pin is informational; CI checks out the triggering commit for CANtheon.",
@@ -129,7 +139,22 @@
     "No production hardware or live CAN bus required for CI fixtures.",
     "TensorGate NONDETERMINISTIC paths are not exercised by this gate.",
     "Adaptive scheduling uses synthetic fictional data only; not clinical validation.",
-    "Human override coverage exercises MultiFlow DecisionEvidence API (append-only new records)."
+    "Human override coverage exercises MultiFlow DecisionEvidence API (append-only new records).",
+    "Aurora controlled-mode MultiFlow dispatch is UNAVAILABLE on aurora-swarm-btc@a5d0881 (policy_scheduling not on main; AURORA_MULTIFLOW_ENABLED defaults off).",
+    "Shadow-mode evidence path is verified; execution authorization remains AEGIS-42 independent."
   ],
-  "update_procedure": "1. Verify new sibling commit passes local smoke + failure injection. 2. Update the commit SHA in this file. 3. Re-run validate_chimera_manifest.py and all verification_commands. 4. Commit the manifest change with a descriptive message referencing the sibling SHA. 5. Confirm CI uses the new pins."
+  "update_procedure": "1. Verify new sibling commit passes local smoke + failure injection. 2. Update the commit SHA in this file. 3. Re-run validate_chimera_manifest.py and all verification_commands. 4. Commit the manifest change with a descriptive message referencing the sibling SHA. 5. Confirm CI uses the new pins.",
+  "last_verified": {
+    "date": "2026-10-19",
+    "results": {
+      "manifest": "PASS",
+      "unit": "192 passed",
+      "failure_injection": "19 passed",
+      "smoke": "PASS",
+      "live_host": "PASS",
+      "controlled_demonstrator": "PASS",
+      "adaptive_demonstrator": "PASS"
+    },
+    "notes": "Verified with sibling checkouts at listed SHAs. Aurora controlled-mode MultiFlow dispatch remains unavailable."
+  }
 }
